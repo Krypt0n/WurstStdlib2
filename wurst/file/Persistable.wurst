@@ -6,7 +6,6 @@ import DataInterfaces
 import Base64Data
 import Box
 import ErrorHandling
-import HashData
 
 /**
     A simple interface allowing to insert custom user code
@@ -40,6 +39,19 @@ public enum LoadStatus
     FAIL_READ
     FAIL_DESERIALIZE
     FAIL_NO_PLAYER
+
+public function LoadStatus.toString() returns string
+    var status = "none"
+    switch this
+        case SUCCESS
+            status = "SUCCESS"
+        case FAIL_READ
+            status = "FAIL_READ"
+        case FAIL_DESERIALIZE
+            status = "FAIL_DESERIALIZE"
+        case FAIL_NO_PLAYER
+            status = "FAIL_NO_PLAYER"
+    return status
 
 public interface PersistableLoadCallback
     function onLoaded(LoadStatus status)
@@ -78,8 +90,11 @@ public abstract class Persistable implements DataSerializable
 
         let readSuccess = try() ->
             PacketReader.open(getPath())
+            //print("---  opening path: " + getPath())
             let checksum = PacketReader.read().toInt()
             var data = PacketReader.readBigString()
+            //print("---  reading sum: " + checksum.toString())
+            //print("--- expected sum: " + data.checksum().toString())
             if checksum == 0 or checksum != data.checksum()
                 destroy data
                 error("Persistable: checksum failed to validate")
@@ -155,10 +170,12 @@ public abstract class Persistable implements DataSerializable
     function save(PersistableSaveCallback callback)
         if localPlayer == owner
             let writer = getWriter()
+            let path   = getPath()
             writer.writeSerializable(this)
             var data = writer.intoEncoder().encode()
             if middleware != null
                 data = middleware.encode(data)
+            PacketWriter.createFolder(path.substring(0, path.lastIndexOf("/"))) // create only top last folder
             PacketWriter.initialize()
             PacketWriter.write(data.checksum().toString())
             PacketWriter.write(data)

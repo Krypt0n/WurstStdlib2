@@ -184,7 +184,6 @@ import Metadata
 import GamecacheKeys
 import GamecacheBuffer
 import StringEncoder
-import ClosureTimers
 
 enum NetworkState
 	PREPARING

@@ -86,6 +86,7 @@ public class PacketWriter
         if currentPacket > DATA_PACKETS_PER_FILE
             error("exceeded max packets per file")
 
+        //print("write: " + packet)
         let packetHex = currentPacket.toHex(4)
 
         Preload(DATA_PADDING_1 + packet + DATA_PADDING_2 + packetHex + DATA_PADDING_3)        
@@ -161,8 +162,10 @@ public class PacketReader
     **/
     static function read() returns string
         var data = BlzGetAbilityTooltip(DATA_DUMMY_ID, currentPacket)
+        //print("---  reading packet: " + data)
         if data == "END OF FILE"
             return ""
+        //print("read: " + data)
         currentPacket++
         return data
 
