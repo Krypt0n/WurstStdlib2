@@ -24,11 +24,12 @@ public enum Targettype
 	POINT
 	POINTUNIT
 	PASSIVE
+	INSTANT
 
 public function Targettype.toString() returns string
 	switch this
 		case NONE
-			return "Instant Cast"
+			return ""
 		case Targettype.POINT
 			return "Point Target"
 		case Targettype.UNIT
@@ -37,6 +38,8 @@ public function Targettype.toString() returns string
 			return "Point & Unit Target"
 		case PASSIVE
 			return "Passive"
+		case INSTANT
+			return "Instant Cast"
 	return ""
 
 public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
