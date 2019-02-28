@@ -23,8 +23,8 @@ constant DATA_DUMMY_LEVELS = DATA_PACKETS_PER_FILE
 constant DATA_DUMMY_RAWCODE = compiletime(DATA_DUMMY_ID.toRawCode())
 // max amount of data that can fit into a preload call safely
 // value was determined experimentally
-// anything above 259 symbols gets removed
-constant DATA_PER_PRELOAD = 259
+// anything above 257 symbols gets removed
+constant DATA_PER_PRELOAD = 257
 
 constant DATA_PADDING_1 = "\")\r\n\tcall BlzSetAbilityTooltip('" + DATA_DUMMY_RAWCODE + "',\""
 constant DATA_PADDING_2 = "\",$"
@@ -162,10 +162,10 @@ public class PacketReader
     **/
     static function read() returns string
         var data = BlzGetAbilityTooltip(DATA_DUMMY_ID, currentPacket)
-        //print("---  reading packet: " + data)
+
         if data == "END OF FILE"
             return ""
-        //print("read: " + data)
+
         currentPacket++
         return data
 

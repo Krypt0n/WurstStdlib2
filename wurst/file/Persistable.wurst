@@ -90,11 +90,10 @@ public abstract class Persistable implements DataSerializable
 
         let readSuccess = try() ->
             PacketReader.open(getPath())
-            //print("---  opening path: " + getPath())
+
             let checksum = PacketReader.read().toInt()
             var data = PacketReader.readBigString()
-            //print("---  reading sum: " + checksum.toString())
-            //print("--- expected sum: " + data.checksum().toString())
+
             if checksum == 0 or checksum != data.checksum()
                 destroy data
                 error("Persistable: checksum failed to validate")
