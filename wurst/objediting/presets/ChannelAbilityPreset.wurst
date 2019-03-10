@@ -1,8 +1,6 @@
 package ChannelAbilityPreset
 import NoWurst
-import public AbilityObjEditing
-import public ObjectIds
-import public ObjectIdGenerator
+import AbilityObjEditing
 import OrderStringFactory
 import BitSet
 
