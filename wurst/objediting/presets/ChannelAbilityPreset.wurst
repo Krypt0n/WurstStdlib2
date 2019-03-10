@@ -9,7 +9,7 @@ var odf = new OrderStringFactory()
 	odf = new OrderStringFactory()
 
 
-public enum Option
+public enum SpellOption
 	VISIBLE
 	TARGETIMAGE
 	PHYSICALSPELL
@@ -79,7 +79,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 		presetFollowThroughTime(lvl -> 0.)
 		presetArtDuration(lvl -> 0.)
 		if makeVisible
-			presetOption(Option.VISIBLE, true)
+			presetOption(SpellOption.VISIBLE, true)
 		if removeVisuals
 			setArtCaster("")
 			setArtEffect("")
@@ -89,7 +89,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 	function presetTargetTypes(Targettype ttype)
 		presetTargetType(lvl -> ttype castTo int)
 
-	function presetOption(Option opt, boolean flag)
+	function presetOption(SpellOption opt, boolean flag)
 		let pow = opt castTo int
 		if optionSet.contains(pow)
 			if not flag
@@ -99,5 +99,5 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 
 		presetOptions(lvl -> optionSet.val)
 
-	function hasOption(Option option) returns boolean
+	function hasOption(SpellOption option) returns boolean
 		return optionSet.contains(option castTo int)
