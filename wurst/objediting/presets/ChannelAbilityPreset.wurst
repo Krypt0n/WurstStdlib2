@@ -4,11 +4,6 @@ import AbilityObjEditing
 import OrderStringFactory
 import BitSet
 
-var odf = new OrderStringFactory()
-@compiletime function initOdf()
-	odf = new OrderStringFactory()
-
-
 public enum SpellOption
 	VISIBLE
 	TARGETIMAGE
@@ -61,7 +56,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 		tooltipStartListen()
 		setLevels(lvls)
 		tooltipStopListen(false)
-		orderString = odf.getOrderString(true)
+		orderString = orderStringFactory.getOrderString(true)
 		presetBaseOrderID(_lvl -> orderString)
 		if removeChannelProperties
 			removeChannelProperties(true)

@@ -2,6 +2,10 @@ package OrderStringFactory
 import NoWurst
 import ErrorHandling
 
+public var orderStringFactory = new OrderStringFactory()
+@compiletime function initOdf()
+	orderStringFactory = new OrderStringFactory()
+	
 public class OrderStringFactory
 	int counter = -1
 
