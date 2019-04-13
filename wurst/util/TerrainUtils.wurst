@@ -116,6 +116,12 @@ public function tile.getX() returns real
 public function tile.getY() returns real
 	return (this.id div TILES_X) * 128. + boundMin.y
 
+public function tile.getIdX() returns int
+	return this.id mod TILES_X
+
+public function tile.getIdY() returns int
+	return this.id div TILES_X
+
 // vec2 conversion
 
 /** Returns the tile which given vec2 belongs to. */

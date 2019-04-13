@@ -1,0 +1,80 @@
+package Base64Tests
+
+import Base64
+import Bitwise
+import LinkedList
+import BigString
+
+@test function base64EncoderTest1()
+    let encoder = new Base64Encoder(128)
+
+    // Hell
+    encoder.pushByte(0x48)
+    encoder.pushByte(0x65)
+    encoder.pushByte(0x6c)
+    encoder.pushByte(0x6c)
+    // o, w
+    encoder.pushByte(0x6f)
+    encoder.pushByte(0x2c)
+    encoder.pushByte(0x20)
+    encoder.pushByte(0x77)
+    // orld
+    encoder.pushByte(0x6f)
+    encoder.pushByte(0x72)
+    encoder.pushByte(0x6c)
+    encoder.pushByte(0x64)
+    // !
+    encoder.pushByte(0x21)
+    encoder.encode()
+
+    encoder.intoData().readAll().assertEquals("SGVsbG8sIHdvcmxkIQ==")
+
+@test function base64EncoderTest2()
+    let encoder = new Base64Encoder(16)
+    encoder.pushInt(byte4(0x48, 0x65, 0x6c, 0x6c).toInt())
+    encoder.pushInt(byte4(0x6f, 0x2c, 0x20, 0x77).toInt())
+    encoder.pushInt(byte4(0x6f, 0x72, 0x6c, 0x64).toInt())
+    encoder.pushInt(byte4(0x21, 0x20, 0x20, 0x20).toInt())    
+    encoder.encode()
+
+    let bs = encoder.intoData()
+    bs.readSome(16).assertEquals("SGVsbG8sIHdvcmxk")
+    bs.readSome(16).assertEquals("ISAgIA==")
+
+@test function base64DecoderTest()
+
+    let data = asList(new BigStringElement("SGVsbG8sIHdvcmxkIQ=="))
+
+    let decoder = new Base64Decoder(new BigString(data, BIGSTRING_MAX_CHUNK_LENGTH))
+    decoder.decode()
+
+    decoder.popByte().assertEquals(0x48)
+    decoder.popByte().assertEquals(0x65)
+    decoder.popByte().assertEquals(0x6c)
+    decoder.popByte().assertEquals(0x6c)
+    decoder.popByte().assertEquals(0x6f)
+    decoder.popByte().assertEquals(0x2c)
+    decoder.popByte().assertEquals(0x20)
+    decoder.popByte().assertEquals(0x77)
+    decoder.popByte().assertEquals(0x6f)
+    decoder.popByte().assertEquals(0x72)
+    decoder.popByte().assertEquals(0x6c)
+    decoder.popByte().assertEquals(0x64)
+    decoder.popByte().assertEquals(0x21)
+
+@test function base64NegativeTest()
+    let encoder = new Base64Encoder(16)
+    print("===WRITING===")
+    encoder.pushInt(-1000)
+    encoder.pushInt(1000)
+    encoder.pushShort(1000)
+    print("===ENCODING===")
+    encoder.encode()
+
+    let decoder = new Base64Decoder(encoder.intoData())
+    print("===DECODING===")
+    decoder.decode()
+    print("===READING===")
+    decoder.popInt().assertEquals(-1000)
+    decoder.popInt().assertEquals(1000)
+    decoder.popShort().assertEquals(1000)

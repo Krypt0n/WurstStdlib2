@@ -124,5 +124,5 @@ public class GamecacheBuffer
 		destroy synchronizer
 
 	function reset()
-		writeIndex = 0
-		readIndex = 0
+		writeIndex = -1
+		readIndex = -1

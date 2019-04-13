@@ -3,6 +3,10 @@ import NoWurst
 import ErrorHandling
 import Annotations
 
+public var orderStringFactory = new OrderStringFactory()
+@compiletime function initOdf()
+	orderStringFactory = new OrderStringFactory()
+	
 public class OrderStringFactory
 	int counter = -1
 

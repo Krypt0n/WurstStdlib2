@@ -1,220 +1,185 @@
 package Persistable
+
+import PacketIO
 import Network
-import MultifileIO
-import PreloadIO
-import BufferAdapters
-import public Buffer
+import DataInterfaces
+import Base64Data
+import Box
+import ErrorHandling
 
 /**
-	Represents the various states of a persistable class load.
-	SUCCESS - The class has successfully loaded from disk.
-	FAIL_NOT_ENABLED - Local files have not been enabled for this user.
-	FAIL_FILE_CORRUPT - Decoding failed due to a corrupted/tampered file.
-	FAIL_DESERIALIZE - Decoding failed due to bad data in the file, meaning the .deserialize()
-	function errored out due to missing/malformed data after it has been succesfully decoded.
-	This can also happen if the file is empty or doesn't exist.
-	FAIL_NO_PLAYER - The player has left either during data transfer, or before.
+    A simple interface allowing to insert custom user code
+    during the serialization and deserialization phases
+    of Persistable, for example, to introduce encryption
+    to the output.
+**/
+public interface PersistableMiddleware
+    /**
+        Called right before the data is written to a file.
+        The returned BigString will be used instead.
+    **/
+    function encode(BigString input) returns BigString
+    
+    /**
+        Called right before the data is deserialized from a file.
+        The returned BigString will be used instead.
+    **/
+    function decode(BigString input) returns BigString
+
+/**
+    Represents various failures that can occur during loading.
+
+    SUCCESS - No error has occured.
+    FAIL_READ - Error while trying to read data. Could be due to a programming error, or failing checksum, which means the file is missing or has been tampered with.
+    FAIL_DESERIALIZE - Error while trying to deserialize the class.
+    FAIL_NO_PLAYER - Error due to the owner not being present in the game anymore.
 **/
 public enum LoadStatus
-	SUCCESS
-	FAIL_NOT_ENABLED
-	FAIL_FILE_CORRUPT
-	FAIL_DESERIALIZE
-	FAIL_NO_PLAYER
+    SUCCESS
+    FAIL_READ
+    FAIL_DESERIALIZE
+    FAIL_NO_PLAYER
 
-/**
-	Represents the various states of a persistable class save.
-	SUCCESS - The class has successfully saved to disk.
-	FAIL_NOT_ENABLED - Local files have not been enabled for this user.
-	FAIL_NO_PLAYER - The player is not present.
-**/
-public enum SaveStatus
-	SUCCESS
-	FAIL_NOT_ENABLED
-	FAIL_NO_PLAYER
+public function LoadStatus.toString() returns string
+    var status = "none"
+    switch this
+        case SUCCESS
+            status = "SUCCESS"
+        case FAIL_READ
+            status = "FAIL_READ"
+        case FAIL_DESERIALIZE
+            status = "FAIL_DESERIALIZE"
+        case FAIL_NO_PLAYER
+            status = "FAIL_NO_PLAYER"
+    return status
 
-/**
-	This is the folder that all your map objects will be serialized in.
-	You should override this to prevent conflicts with other maps using this class.
-**/
-@configurable
-public constant PERSISTABLE_MAP_PREFIX = "persistent"
-
-/** Functional interface for optional lambda callback in Persistable.load() **/
 public interface PersistableLoadCallback
-	function onLoaded(LoadStatus status)
+    function onLoaded(LoadStatus status)
 
-/** Functional interface for optional lambda callback in Persistable.save() **/
 public interface PersistableSaveCallback
-	function onSaved()
+    function onSaved()
 
-/**
-	This class provides you the ability, by extending it, to save and load
-	data in a safe, synchronous manner
-**/
-public abstract class Persistable implements BufferSerializable
-	private PersistentStore store
-	/** The owner of the object, from whom and to who this object will be saved. **/
-	protected player owner
+public abstract class Persistable implements DataSerializable
+    protected player owner
+    private PersistableMiddleware middleware
 
-	construct(player owner)
-		this.owner = owner
-		store = new PersistentStore(this, owner)
+    construct(player owner)
+        this.owner = owner
+    
+    construct(player owner, PersistableMiddleware middleware)
+        this.owner = owner
+        this.middleware = middleware
 
-	ondestroy
-		destroy store
+    ondestroy
+        if middleware != null
+            destroy middleware
 
-	/* You must implement these */
+    abstract function getPath() returns string
+    protected function onLoaded(LoadStatus _status)
+    protected function onSaved()
 
-	/** This function should return a unique class id for this class **/
-	abstract function getClassId() returns string
-	/** This function should return a unique object id for this instance **/
-	abstract function getId() returns string
-	/** This function should apply default data in the event that loading has failed **/
-	abstract function supplyDefault()
+    protected function getWriter() returns DataWriter
+        return new Base64DataWriter(MAX_PACKET_LENGTH)
 
-	/* Optionally overridable functions */
+    protected function getReader(BigString data) returns DataReader
+        return new Base64DataDecoder().decode(data)
 
-	/** Override this function if you want to do something on object load **/
-	protected function onLoaded(LoadStatus _status)
-	/** Override this function if you want to do something on object save **/
-	protected function onSaved()
-	/**
-		Override this function if you want to adjust the delay between each file opeation.
-		This might be necessary if you are saving/loading a lot of data and your players are lagging out.
-		A good value for this can be 0.125 or 0.25.
-	**/
-	protected function getIODelay() returns real
-		return 0
-	/**
-		Internal function that returns the path that the object should be saved under.
-		You can override this if you feel the need to change the paths under which
-		your objects are saved.
-	**/
-	protected function getPath() returns string
-		return PERSISTABLE_MAP_PREFIX + "/" + getClassId() + "/" + getId()
+    private function readIntoNetwork(Network network)
+        Box<LoadStatus> statusBox = new Box<LoadStatus>(LoadStatus.SUCCESS)
+        Box<DataReader> readerBox = new Box<DataReader>(null)
 
-	/* Public interface */
+        let readSuccess = try() ->
+            PacketReader.open(getPath())
 
-	/** Saves this Persistable to disk **/
-	function save()
-		store.save(null)
+            let checksum = PacketReader.read().toInt()
+            var data = PacketReader.readBigString()
 
-	/** Saves this Persistable to disk and calls the callback when it finishes **/
-	function save(PersistableSaveCallback callback)
-		store.save(callback)
+            if checksum == 0 or checksum != data.checksum()
+                destroy data
+                error("Persistable: checksum failed to validate")
+            else
+                if middleware != null
+                    data = middleware.decode(data)
+                readerBox.inner = getReader(data)
 
-	/** Loads and syncs this Persistable from owner's disk **/
-	function load()
-		store.load(null)
+        let reader = readerBox.inner
+        destroy readerBox
 
-	/** Loads and syncs this Persistable from owner's disk and calls the callback when it finishes **/
-	function load(PersistableLoadCallback callback)
-		store.load(callback)
+        if readSuccess and reader != null
+            network.write() (writer) ->
+                writer.writeInt(LoadStatus.SUCCESS castTo int)
 
-/**
-	Internal class providing the actual save/load mechanics of Persistables.
-**/
-class PersistentStore
-	private player owner
-	private Persistable entity
+            let deserializeSuccess = try() ->
+                let proxyReader = new HashDataProxyReader(network.getWriter(), reader)
+                proxyReader.readSerializable(this)
+                destroy proxyReader
 
-	construct(Persistable entity, player owner)
-		this.entity = entity
-		this.owner = owner
+            if deserializeSuccess
+                destroy statusBox
+                if reader != null
+                    destroy reader
+                return
+            else
+                statusBox.inner = FAIL_DESERIALIZE
+        else
+            statusBox.inner = FAIL_READ
 
-	private function finishWithStatus(LoadStatus status, PersistableLoadCallback callback)
-		if status != LoadStatus.SUCCESS
-			entity.supplyDefault()
+        network.write() (writer) ->
+            writer.clear()
+            writer.writeInt(statusBox.inner castTo int)
+        
+        destroy statusBox
+        if reader != null
+            destroy reader
 
-		if callback != null
-			callback.onLoaded(status)
-		entity.onLoaded(status)
+    private function finishLoad(LoadStatus status, PersistableLoadCallback callback)
+        onLoaded(status)
+        if callback != null
+            callback.onLoaded(status)
+            destroy callback
 
-	function load(PersistableLoadCallback callback)
-		// synchronizer used to proceed when the owner has finished loading data
-		let synchronizer = new SimpleSynchronizer()
-		let network = new Network(owner)
-		let reader = new FileReader(entity.getPath(), entity.getIODelay())
+    private function finishSave(PersistableSaveCallback callback)
+        onSaved()
+        if callback != null
+            callback.onSaved()
+            destroy callback
 
-		if localPlayer == owner
-			reader.load() _status ->
-				var buffer = new OrderedStringBuffer(MAX_PACKET_LENGTH)
-				// a boolean for keeping track of whether the load was succesful or not
-				network.getData().writeBoolean(true)
-				// read the data from the file into the buffer, and then transfer it into the network's buffer
-				boolean transferSuccess
+    function load(PersistableLoadCallback callback)
+        let network = new Network(owner)
 
-				let populateSuccess = try() ->
-					buffer.populateFromFile(reader)
+        if localPlayer == owner
+            readIntoNetwork(network)
 
-				if populateSuccess
-					transferSuccess = try() ->
-						buffer.transfer(network.getData())
-				else
-					transferSuccess = false
+        network.start() (status, reader) ->
+            if status == NetworkResult.ABORTED
+                finishLoad(LoadStatus.FAIL_NO_PLAYER, callback)
+            else
+                let loadStatus = reader.readInt() castTo LoadStatus
 
-				// if there was an error during transfer or loading, we scrap the data...
-				if (not populateSuccess) or (not transferSuccess) or (not buffer.isValid())
-					network.getData().clear()
-					network.getData().writeBoolean(false)
+                if loadStatus == LoadStatus.SUCCESS
+                    if localPlayer != owner
+                        this.deserialize(reader)
+                    finishLoad(LoadStatus.SUCCESS, callback)
+                else
+                    finishLoad(loadStatus, callback)
 
-				destroy buffer
-				synchronizer.sync()
-		else
-			// all other players just need to wait for the owner to tell others he's ready
-			synchronizer.sync()
+    function load()
+        load(null)
 
-		// when the sender has finished loading, we can start the transmission
-		synchronizer.onSynced() ->
-			destroy reader
-
-			network.start() (NetworkResult status, Buffer buffer) ->
-				var loadStatus = LoadStatus.SUCCESS
-
-				if status == NetworkResult.ABORTED
-					loadStatus = LoadStatus.FAIL_NO_PLAYER
-				else
-					// first boolean in the stream is always an indicator of whether the owner loaded succesfully
-					let decodeSuccess = buffer.readBoolean()
-
-					if decodeSuccess
-						// if the deserialization has failed for some reason, we need to catch that
-						let deserializeSuccess = try(() -> entity.deserialize(buffer))
-						if not deserializeSuccess
-							loadStatus = LoadStatus.FAIL_DESERIALIZE
-					else
-						loadStatus = LoadStatus.FAIL_FILE_CORRUPT
-
-				finishWithStatus(loadStatus, callback)
-
-
-	function save(PersistableSaveCallback callback)
-		// used to proceed when the owner has finished saving to disk
-		let synchronizer = new SimpleSynchronizer()
-		FileWriter writer = null
-
-		if localPlayer == owner
-			writer = new FileWriter(entity.getPath(), entity.getIODelay())
-			let buffer = new OrderedStringBuffer(MAX_PACKET_LENGTH)
-
-			// write the entity into the buffer
-			execute(() -> buffer.write(entity))
-			// flush any remaining data into buffer (mandatory for OrderedStringBuffer)
-			buffer.flush()
-			// transfer the data into the writer and destroy the buffer
-			writer.populateFromBuffer(buffer)
-			destroy buffer
-			// save it to disk
-			writer.save(() -> synchronizer.sync())
-		else
-			synchronizer.sync()
-
-		// call the callback when everything has finished
-		synchronizer.onSynced() ->
-			if localPlayer == owner
-				destroy writer
-
-			if callback != null
-				callback.onSaved()
-			entity.onSaved()
+    function save(PersistableSaveCallback callback)
+        if localPlayer == owner
+            let writer = getWriter()
+            let path   = getPath()
+            writer.writeSerializable(this)
+            var data = writer.intoEncoder().encode()
+            if middleware != null
+                data = middleware.encode(data)
+            PacketWriter.createFolder(path.substring(0, path.lastIndexOf("/"))) // create only top last folder
+            PacketWriter.initialize()
+            PacketWriter.write(data.checksum().toString())
+            PacketWriter.write(data)
+            PacketWriter.commit(getPath())
+        finishSave(callback)
+    
+    function save()
+        save(null)

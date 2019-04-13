@@ -1,18 +1,11 @@
 package ChannelAbilityPreset
 import NoWurst
-import public AbilityObjEditing
-import public ObjectIds
-import public ObjectIdGenerator
+import AbilityObjEditing
 import OrderStringFactory
 import BitSet
 import Annotations
 
-var odf = new OrderStringFactory()
-@compiletime function initOdf()
-	odf = new OrderStringFactory()
-
-
-public enum Option
+public enum SpellOption
 	VISIBLE
 	TARGETIMAGE
 	PHYSICALSPELL
@@ -25,11 +18,12 @@ public enum Targettype
 	POINT
 	POINTUNIT
 	PASSIVE
+	INSTANT
 
 public function Targettype.toString() returns string
 	switch this
 		case NONE
-			return "Instant Cast"
+			return ""
 		case Targettype.POINT
 			return "Point Target"
 		case Targettype.UNIT
@@ -38,6 +32,9 @@ public function Targettype.toString() returns string
 			return "Point & Unit Target"
 		case PASSIVE
 			return "Passive"
+		case INSTANT
+			return "Instant Cast"
+	return ""
 
 public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 	private bitset optionSet = bitset(0)
@@ -60,7 +57,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 		tooltipStartListen()
 		setLevels(lvls)
 		tooltipStopListen(false)
-		orderString = odf.getOrderString(true)
+		orderString = orderStringFactory.getOrderString(true)
 		presetBaseOrderID(_lvl -> orderString)
 		if removeChannelProperties
 			removeChannelProperties(true)
@@ -78,7 +75,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 		presetFollowThroughTime(lvl -> 0.)
 		presetArtDuration(lvl -> 0.)
 		if makeVisible
-			presetOption(Option.VISIBLE, true)
+			presetOption(SpellOption.VISIBLE, true)
 		if removeVisuals
 			setArtCaster("")
 			setArtEffect("")
@@ -88,7 +85,7 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 	function presetTargetTypes(Targettype ttype)
 		presetTargetType(lvl -> ttype castTo int)
 
-	function presetOption(Option opt, boolean flag)
+	function presetOption(SpellOption opt, boolean flag)
 		let pow = opt castTo int
 		if optionSet.contains(pow)
 			if not flag
@@ -98,5 +95,5 @@ public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 
 		presetOptions(lvl -> optionSet.val)
 
-	function hasOption(Option option) returns boolean
+	function hasOption(SpellOption option) returns boolean
 		return optionSet.contains(option castTo int)
