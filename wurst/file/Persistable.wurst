@@ -41,7 +41,7 @@ public enum LoadStatus
     FAIL_NO_PLAYER
 
 public function LoadStatus.toString() returns string
-    var status = "none"
+    string status
     switch this
         case SUCCESS
             status = "SUCCESS"

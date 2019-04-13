@@ -3,7 +3,6 @@ import NoWurst
 import AbilityObjEditing
 import OrderStringFactory
 import BitSet
-import Annotations
 
 public enum SpellOption
 	VISIBLE
@@ -34,7 +33,6 @@ public function Targettype.toString() returns string
 			return "Passive"
 		case INSTANT
 			return "Instant Cast"
-	return ""
 
 public class ChannelAbilityPreset extends AbilityDefinitionIllidanChannel
 	private bitset optionSet = bitset(0)
