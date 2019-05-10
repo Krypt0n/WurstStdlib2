@@ -1,0 +1,214 @@
+/*
+*   Name:           Logging.wurst
+*   System:         Development & Debugging
+*   Description:    This script serves for debugging and testing.
+*   Author:         Alex
+*/
+
+package Logging
+@configurable public var DEBUG_LOGGER_LEVEL = LoggerLevel.WARNING
+@configurable public var DEBUG_LOGGER_TAG   = LoggerTag.ALL
+@configurable public var DEBUG_MSG_DURATION = 45.
+
+
+/** Here are some example Shortcut synonyms for giving global LoggerTags
+    The Logging can be enable for only a specific LoggerTag, so a single System can be debugged separatly 
+    e.g. BreedingPool related calls uses:
+                                    Logger.debug(LoggerTag.BREP, "this a an normal debug message")
+
+    BreedingPool-System         -> BREP                    
+    Aggro-Threat-System         -> AGTH                     
+    Dungeon-System              -> DUNG
+    Hero-Systems                -> HERO
+    Player-Systems              -> PLAY
+    SaveLoad-System             -> SALO
+    Recycler-System             -> RECY
+    Ability-Systems             -> ABIL
+    ExpAndBounty-System         -> EXBO
+    Item-Systems                -> ITES
+    Quest-System                -> QUES
+    Security-System             -> SECU
+    DDS-System                  -> DDSS
+    City-Npc-System             -> CYNS
+*/
+
+public enum LoggerLevel
+    TRACE
+    DEBUG
+    INFO
+    WARNING
+    ERROR
+    
+/** These LoggerTags should be make configurable (use class instead of enum @Frotty ? */
+public enum LoggerTag
+    ALL
+    BREP
+    AGTH
+    DUNG
+    HERO
+    PLAY
+    SALO
+    RECY
+    ABIL
+    XPBO
+    ITES
+    QUES
+    SECU
+    DDSS
+    CYNS
+    CMDS
+    NONE
+
+public function printLoggerTags(player p)
+    printTimedToPlayer("Available LoggerTags:", 10, p)
+    printTimedToPlayer("      ALL, BREP, AGTH, DUNG, HERO, PLAY, SALO, RECY, ABIL, XPBO, ITES, QUES, SECU, DDSS, CYNS, NONE", 10, p)
+
+public function printLoggerLevels(player p)
+    printTimedToPlayer("Available LoggerLevels:", 10, p)
+    printTimedToPlayer("      TRACE, DEBUG, INFO, WARNING, ERROR", 10, p)
+
+public function getLoggerTagFromString(string str) returns LoggerTag
+    var tag = LoggerTag.NONE
+
+    switch str
+        case "ALL"
+            return LoggerTag.ALL
+        case "BREP"
+            return LoggerTag.BREP
+        case "AGTH"
+            return LoggerTag.AGTH
+        case "DUNG"
+            return LoggerTag.DUNG
+        case "HERO"
+            return LoggerTag.HERO
+        case "PLAY"
+            return LoggerTag.PLAY
+        case "SALO"
+            return LoggerTag.SALO
+        case "RECY"
+            return LoggerTag.RECY
+        case "ABIL"
+            return LoggerTag.ABIL
+        case "XPBO"
+            return LoggerTag.XPBO
+        case "ITES"
+            return LoggerTag.ITES
+        case "QUES"
+            return LoggerTag.QUES
+        case "SECU"
+            return LoggerTag.SECU
+        case "DDSS"
+            return LoggerTag.DDSS
+        case "CYNS"
+            return LoggerTag.CYNS
+        case "CMDS"
+            return LoggerTag.CMDS
+        case "NONE"
+            return LoggerTag.NONE
+    return tag
+
+public function getLoggerLevelFromString(string str) returns LoggerLevel
+    var lvl = LoggerLevel.ERROR
+
+    switch str
+        case "TRACE"
+            return LoggerLevel.TRACE
+        case "DEBUG"
+            return LoggerLevel.DEBUG
+        case "INFO"
+            return LoggerLevel.INFO
+        case "WARNING"
+            return LoggerLevel.WARNING
+        case "ERROR"
+            return LoggerLevel.ERROR
+
+    return lvl
+
+public function LoggerTag.getTag() returns string
+    switch this
+        case ALL
+            return "All"
+        case BREP
+            return "BreedingPool-System"
+        case AGTH
+            return "Aggro-Threat-System"
+        case DUNG
+            return "Dungeon-System"
+        case HERO
+            return "Hero-Systems"
+        case PLAY
+            return "Player-Systems"
+        case SALO
+            return "SaveLoad-System"
+        case RECY
+            return "Recycler-System"
+        case ABIL
+            return "Ability-Systems"
+        case XPBO
+            return "ExpAndBounty-System"
+        case ITES
+            return "Item-Systems"
+        case QUES
+            return "Quest-System"
+        case SECU
+            return "Security-System"
+        case DDSS
+            return "DDS-System"
+        case CYNS
+            return "City-Npc-System"
+        case CMDS
+            return "Command-System"
+        case NONE
+            return "None"
+        default
+            return "?"
+
+public function LoggerLevel.getTag() returns string
+    switch this
+        case TRACE
+            return "|cffADADADtrace|r"
+        case DEBUG
+            return "|cff2685DCdebug|r"
+        case INFO
+            return "|cffFFCC00info|r"
+        case WARNING
+            return "|cffF47E3Ewarning|r"
+        case ERROR
+            return "|cffFB2700error|r"
+        default 
+            return "?"
+
+// Wrapper for nice log syntax
+public class Logger
+    /** Prints a trace logmessage */
+    static function trace(LoggerTag tag, string msg)
+        printLog(localPlayer, LoggerLevel.TRACE, tag, msg)
+
+    /** Prints a debug logmessage */
+    static function debug(LoggerTag tag, string msg)
+        printLog(localPlayer, LoggerLevel.DEBUG, tag, msg)
+
+    /** Prints a info logmessage*/
+    static function info(LoggerTag tag, string msg)
+        printLog(localPlayer, LoggerLevel.INFO, tag, msg)
+
+    /** Prints a warning logmessage */
+    static function warn(LoggerTag tag, string msg)
+        printLog(localPlayer, LoggerLevel.WARNING, tag, msg)
+
+    /** Prints a warning logmessage */
+    static function error(LoggerTag tag, string msg)
+        printLog(localPlayer, LoggerLevel.ERROR, tag, msg)
+
+    static function setLevel(LoggerLevel lvl)
+        DEBUG_LOGGER_LEVEL = lvl
+    
+    static function setTag(LoggerTag tag)
+        DEBUG_LOGGER_TAG = tag
+
+function printLog(player showTo, LoggerLevel loglvl, LoggerTag logtag, string msg)
+    if (DEBUG_LOGGER_LEVEL castTo int) <= (loglvl castTo int)
+      and (DEBUG_LOGGER_TAG == LoggerTag.ALL or (DEBUG_LOGGER_TAG castTo int) == (logtag castTo int))
+      and not DEBUG_LOGGER_TAG == LoggerTag.NONE
+      or loglvl == LoggerLevel.ERROR    // always print errors
+        printTimedToPlayer(loglvl.getTag() + " - " + logtag.getTag() + ": " + msg, DEBUG_MSG_DURATION, showTo)

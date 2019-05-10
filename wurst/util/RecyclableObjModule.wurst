@@ -1,0 +1,203 @@
+/*
+*   Name:           RecyclableModule.wurst
+*   System:         Recycler System
+*   Description:    This script serves for handling of recycling several objs
+*   Usage:          See test classes Test1 and Test2
+*   Author:         Alex
+*/
+
+package RecyclableObjModule
+
+import Logging
+import RegistryModule
+import HashMap
+import ErrorHandling
+ 
+public module RecyclableObjModule<T>
+    static int size            = 0
+    static int recyclerIndex   = -1
+    static let recycler        = new HashMap<int, int>
+
+    protected bool recycled
+    protected int objId
+
+    private construct()
+        this.recycled = true
+        
+    protected function getObjId() returns int
+        return this.objId
+
+    /** implement this cleanup function to cleanup and clear all initiated class members */
+    protected abstract function cleanup()
+    /** implement this recycle function to cleanup and clear all initiated class members */
+    protected abstract function recycle() returns bool
+
+    protected static function getObject() returns T
+        T obj = null
+        if recyclerIndex > -1
+            obj = getRecyclableObj()
+        return obj
+    
+    protected function recycleObj(T obj) returns bool
+        if not this.recycled
+            this.cleanup()
+            recycleRecyclableObj(obj)
+            this.recycled = true
+        return this.recycled
+
+    private static function getRecyclableObj() returns T
+        T obj = null
+        if recyclerIndex > -1 and recycler.has(recyclerIndex)
+            obj = recycler.get(recyclerIndex) castTo T
+            recycler.put(recyclerIndex, -1)
+            recyclerIndex--
+        return obj
+
+    protected static function recycleRecyclableObj(T obj)
+        recyclerIndex++
+        recycler.put(recyclerIndex, obj castTo int)
+
+    ondestroy
+        this.cleanup()
+        Logger.warn(LoggerTag.RECY, "destroying obj warning: objs of type RecyclableObj should be recycled!")   
+
+
+/** An example test class for showing the usage of both RecyclableObjModule and RegistryModule in one class */
+public class Test1
+    use RecyclableObjModule<Test1>
+    use RegistryModule<Test1>
+
+    private construct()
+        this.objId = Test1.size
+        Test1.size++
+
+    static function create() returns Test1
+        Test1 obj = Test1.getObject()
+        obj = obj != null or Test1.size >= 25 ? obj : new Test1()
+        if obj != null
+            obj.registryId = Test1.addToRegistry(obj)
+        return obj
+
+    protected function setup() returns bool
+        var wasRecycled = this.recycled
+        if this.recycled
+            print("hello I am an obj of class Test1")
+            this.recycled = false
+        return wasRecycled
+
+    override protected function cleanup()
+        print("I am (Test1) got cleaned")
+
+    override function recycle() returns bool
+        return Test1.removeFromRegistry(this.getRegistryId()) and Test1.recycleObj(this) 
+
+/** An example test class for showing the usage of both RecyclableObjModule and RegistryModule in one class */
+public class Test2
+    use RecyclableObjModule<Test2>
+    use RegistryModule<Test2>
+
+    private construct()
+        this.objId = Test2.size
+        Test2.size++
+
+    static function create() returns Test2
+        Test2 obj = Test2.getObject()
+        obj = obj != null or Test2.size >= 1 ? obj : new Test2()
+        if obj != null
+            obj.registryId = Test2.addToRegistry(obj)
+        return obj 
+
+    protected function setup() returns bool
+        var wasRecycled = this.recycled
+        if this.recycled
+            print("hello I am an obj of class Test2")
+            this.recycled = false
+        return wasRecycled
+        
+    override protected function cleanup()
+        print("I am (Test2) got cleaned")
+    
+    override function recycle() returns bool
+        return Test2.removeFromRegistry(this.getRegistryId()) and Test2.recycleObj(this) 
+
+/** An example test class for showing the usage of the RecyclableObjModule */
+public class Test3
+    use RecyclableObjModule<Test3>
+
+    private construct()
+        this.objId = Test3.size
+        Test3.size++
+
+    static function create() returns Test3
+        Test3 obj = Test3.getObject()
+        obj = obj != null or Test3.size >= 1 ? obj : new Test3()
+        return obj 
+
+    protected function setup() returns bool
+        var wasRecycled = this.recycled
+        if this.recycled
+            print("hello I am an obj of class Test3")
+            this.recycled = false
+        return wasRecycled
+        
+    override protected function cleanup()
+        print("I am (Test3) got cleaned")
+    
+    override function recycle() returns bool
+        return Test3.recycleObj(this) 
+
+/** An example test class for showing the usage of the RegistryModule */
+public class Test4
+    use RegistryModule<Test4>
+
+    construct()
+        print("hello I am an obj of class Test4")
+
+    static function create() returns Test4
+        Test4 obj = new Test4()
+        obj.registryId = Test4.addToRegistry(obj)
+        return obj 
+    
+    override function recycle() returns bool
+        return Test4.removeFromRegistry(this.getRegistryId())
+        
+@Test function testRecyclableObjAndRegistry()
+    // create some test objs
+    let a = Test1.create()..setup() // foo setup some values
+    let b = Test1.create()..setup() // foo setup some values
+    let c = Test1.create()..setup() // foo setup some values
+    let d = Test2.create()..setup() // foo setup some values
+
+    // check sizes
+    Test1.size.assertEquals(3)
+    Test2.size.assertEquals(1)
+    
+    // check ids
+    a.getObjId().assertEquals(0)
+    b.getObjId().assertEquals(1)
+    c.getObjId().assertEquals(2)
+    d.getObjId().assertEquals(0)
+
+    // recycle some objs
+    assertTrue(a.recycle())
+    assertTrue(c.recycle())
+
+    // check if recycled
+    Test1.recyclerIndex.assertEquals(1)    // index is 1 means 2 objs are in recycler with id 0 and id 1
+    Test2.recyclerIndex.assertEquals(-1)   // index is -1 means 0 objs are in recycler
+
+    // get recycled obj
+    Test1.create()..setup() // foo setup some values
+
+    // check if got recycled
+    Test1.recyclerIndex.assertEquals(0)    // index is 0 means 1 objs is in recycler
+
+    // check max sizes
+    assertTrue(Test2.create() == null)
+
+    // test registry
+    let bId = b.getRegistryId()
+    Test1.hasInRegistry(bId).assertTrue()
+    (Test1.getFromRegistry(bId) == b).assertTrue()
+    Test1.removeFromRegistry(bId)
+    Test1.hasInRegistry(bId).assertFalse()

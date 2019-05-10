@@ -1,0 +1,55 @@
+/*
+*   Name:           RegistryModule.wurst
+*   System:         RegistryModule
+*   Description:    Module definition  to allow registry pattern for classes
+*   Author:         Alex
+*/
+
+package RegistryModule
+
+import HashMap
+import ErrorHandling
+
+public interface ForElementCallback<T>
+    function callback(T elem)
+
+public module RegistryModule<T>
+    static int uid           = -1
+    static let registerMap   = new IterableMap<int, int>
+    protected int registryId = -1
+
+    protected static function addToRegistry(T obj) returns int
+        uid++
+        registerMap.put(uid, obj castTo int)
+        return uid
+
+    protected static function addToRegistry(T obj, int id) returns int
+        if registerMap.has(id)
+            error("obj with id: " + id.toString() + " already added to the registry and got overwritten!")
+        registerMap.put(id, obj castTo int)
+        return id
+
+    static function hasInRegistry(int id) returns bool
+        return registerMap.has(id)
+
+    static function getFromRegistry(int id) returns T
+        T obj = null
+        if registerMap.has(id)
+            obj = registerMap.get(id) castTo T
+        return obj
+
+    static function forEachIn(ForElementCallback<T> cb)
+        for i = 0 to uid
+            if registerMap.has(i)
+                cb.callback(registerMap.get(i) castTo T)
+
+    /** if the objs class is using RecyclableObjModule removeFromRegistry should be called from ObjsClass.recycle */  
+    protected static function removeFromRegistry(int id) returns bool
+        var removed = false
+        if registerMap.has(id)
+            registerMap.remove(id)
+            removed = true
+        return removed
+
+    function getRegistryId() returns int
+        return this.registryId
